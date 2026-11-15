@@ -27,6 +27,7 @@ button,select{font:inherit;font-size:13px;font-weight:700;border-radius:10px;bor
 button.p{background:var(--pk);border-color:var(--pk);color:#fff;box-shadow:0 0 12px rgba(255,45,138,.6);flex:1}
 .box{border:2px solid var(--cy);border-radius:12px;box-shadow:0 0 12px rgba(34,232,255,.4);padding:6px 8px;background:var(--card)}
 .ctl2{display:flex;gap:8px;margin-bottom:10px}.ctl2 button{flex:1;padding:9px 4px}.fw{position:relative;flex:1;display:flex}.ov{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}button.on{border-color:var(--cy);box-shadow:0 0 8px rgba(34,232,255,.5)}
+.ctl3{display:flex;gap:6px;margin-bottom:10px}.ctl3 select{flex:1;min-width:0;padding:8px 2px;font-size:12px}#q{display:flex;flex-wrap:wrap;gap:3px;font-size:22px;line-height:1}
 .box h2{margin:0 0 4px;font-size:11px;letter-spacing:.5px}
 #el{display:flex;flex-wrap:wrap;gap:3px;max-height:78px;overflow-y:auto;font-size:22px;line-height:1}
 #win{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(3,4,20,.85);border-radius:16px;text-align:center}
@@ -39,12 +40,10 @@ button.p{background:var(--pk);border-color:var(--pk);color:#fff;box-shadow:0 0 1
 <div class="wrap"><canvas id="c"></canvas>
 <div id="win"><div style="font-size:15px;color:var(--mu)">🏆 WINNER</div><div class="f" id="wf"></div><div class="n" id="wn"></div><button class="p" id="again" style="margin-top:14px;flex:none">PLAY AGAIN</button></div></div>
 <div id="log">Press START BATTLE</div>
-<div class="ctl">
-<button class="p" id="go">START BATTLE</button>
-<select id="cnt"><option value="0">All</option><option value="64">64</option><option value="32">32</option><option value="16">16</option></select>
-<select id="spd"><option value="0.7">Slow</option><option value="1" selected>Normal</option><option value="1.6">Fast</option><option value="2.4">Turbo</option></select>
-</div>
+<div class="ctl"><button class="p" id="go">START BATTLE</button></div>
+<div class="ctl3"><select id="mode"><option value="c">Classic</option><option value="g">Groups &#8594; Final</option></select><select id="cnt"><option value="0">All</option><option value="64">64</option><option value="32">32</option><option value="16">16</option></select><select id="siz"><option value="1.2">Size S</option><option value="1.6" selected>Size M</option><option value="2.1">Size L</option></select><select id="spd"><option value="0.7">Slow</option><option value="1" selected>Normal</option><option value="1.6">Fast</option><option value="2.4">Turbo</option></select></div>
 <div class="ctl2"><button id="vo" class="on">🎙 VOICE ON</button><div class="fw"><button id="sg">♫ SONG</button><input type="file" id="f1" class="ov" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"></div><div class="fw"><button id="pk">📁 ADD SONG</button><input type="file" id="f2" class="ov" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"></div></div>
+<div class="box" id="qb" style="display:none;margin-bottom:10px"><h2>QUALIFIED FOR FINAL</h2><div id="q"></div></div>
 <div class="box"><h2>ELIMINATED COUNTRIES</h2><div id="el"></div></div>
 <script>
 const CODES="AF AL DZ AD AO AG AR AM AU AT AZ BS BH BD BB BY BE BZ BJ BT BO BA BW BR BN BG BF BI CV KH CM CA CF TD CL CN CO KM CG CD CR CI HR CU CY CZ DK DJ DM DO EC EG SV GQ ER EE SZ ET FJ FI FR GA GM GE DE GH GR GD GT GN GW GY HT HN HU IS IN ID IR IQ IE IL IT JM JP JO KZ KE KI KP KR KW KG LA LV LB LS LR LY LI LT LU MG MW MY MV ML MT MH MR MU MX FM MD MC MN ME MA MZ MM NA NR NP NL NZ NI NE NG MK NO OM PK PW PS PA PG PY PE PH PL PT QA RO RU RW KN LC VC WS SM ST SA SN RS SC SL SG SK SI SB SO ZA SS ES LK SD SR SE CH SY TJ TZ TH TL TG TO TT TN TR TM TV UG UA AE GB US UY UZ VU VA VE VN YE ZM ZW".split(" ");
@@ -59,18 +58,44 @@ function size(){
   A=Math.min(W/2-8,(window.innerHeight*0.52)/2);cx=W/2;cy=A+8;H=Math.round(cy+A+34);
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
 }
+let raf,tok=0,gi=0,groupsN=0,queue=[],qual=[],mode='c';
+function tone(f,t0,d,type,v){const o=ac.createOscillator(),g=ac.createGain();o.type=type||'triangle';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v||.25,t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(ac.destination);o.start(t0);o.stop(t0+d+.05)}
+function fanfare(){try{ac.resume();const t=ac.currentTime;[[523.25,0,.18],[659.25,.18,.18],[783.99,.36,.18],[1046.5,.54,.5],[783.99,1.1,.15],[1046.5,1.28,.9]].forEach(n=>tone(n[0],t+n[1],n[2]+.1));[523.25,659.25,783.99,1046.5].forEach(f=>tone(f,t+1.28,1.1,'sine',.12));[2093,2637,3136].forEach((f,i)=>tone(f,t+1.5+i*.12,.4,'sine',.06))}catch(e){}}
+function ding(){try{ac.resume();const t=ac.currentTime;tone(880,t,.25,'sine',.2);tone(1318.5,t+.12,.4,'sine',.2)}catch(e){}}
 function start(){
-  size();ending=false;$('win').style.display='none';$('el').innerHTML='';
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
+  tok++;cancelAnimationFrame(raf);
+  $('win').style.display='none';$('el').innerHTML='';$('q').innerHTML='';qual=[];
   let list=CODES.slice().sort(()=>Math.random()-.5);
   const n=+$('cnt').value;if(n)list=list.slice(0,n);
+  mode=$('mode').value;const k=Math.ceil(list.length/20);
+  if(mode==='g'&&k>1){queue=Array.from({length:k},(x,i)=>list.filter((y,j)=>j%k===i));groupsN=k;$('qb').style.display='block'}
+  else{queue=[list];groupsN=0;mode='c';$('qb').style.display='none'}
+  gi=0;stage();playSong();
+  run=true;last=performance.now();raf=requestAnimationFrame(loop);
+}
+function stage(){
+  size();ending=false;
+  const list=queue[gi];
   R=Math.min(A*0.1,A*Math.sqrt(0.4/list.length));
-  FS=R*1.6;
+  FS=R*(+$('siz').value);
   GH=Math.asin(Math.min(0.9,1.9*R/A));
   F=list.map(c=>{
     const a=Math.random()*6.283,r=Math.sqrt(Math.random())*(A-R*1.5),b=Math.random()*6.283;
     return{c,e:flag(c),img:badge(flag(c)),x:cx+Math.cos(a)*r,y:cy-Math.abs(Math.sin(a))*r*.9,vx:Math.cos(b)*120,vy:Math.sin(b)*120,dead:false}});
-  $('alive').textContent=F.length;$('tot').textContent=F.length;$('log').innerHTML='Battle started!';playSong();speak('Battle started');
-  run=true;last=performance.now();requestAnimationFrame(loop);
+  $('alive').textContent=F.length;$('tot').textContent=F.length;
+  const lb=mode==='g'?(gi<groupsN?'GROUP '+(gi+1)+' / '+groupsN:'FINAL'):'Battle started!';
+  $('log').innerHTML=lb;speak(lb);
+}
+function done(w,t){
+  if(t!==tok)return;
+  if(mode==='g'&&gi<groupsN){
+    qual.push(w.c);const s=document.createElement('span');s.textContent=w.e;s.title=nm(w.c);$('q').appendChild(s);
+    ding();$('log').innerHTML=w.e+' '+nm(w.c)+' <i>QUALIFIED!</i>';speak(nm(w.c)+' qualified');
+    gi++;if(gi===groupsN)queue.push(qual.slice());
+    setTimeout(()=>{if(t===tok)stage()},1800);return;
+  }
+  run=false;$('wf').textContent=w.e;$('wn').textContent=nm(w.c);$('win').style.display='flex';fanfare();speak(nm(w.c)+' wins!');
 }
 function badge(e){const S=Math.ceil(2*FS*dpr*2),c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.beginPath();g.arc(S/2,S/2,S/2,0,6.283);g.clip();g.font=(S*1.05)+'px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,S/2,S/2+S*.04);return c}
 function out(f){
@@ -117,11 +142,8 @@ function loop(t){
   draw();
   const left=F.filter(f=>!f.dead);
   $('alive').textContent=left.length;
-  if(left.length<=1&&!ending){
-    ending=true;
-    setTimeout(()=>{const w=left[0]||F[F.length-1];$('wf').textContent=w.e;$('wn').textContent=nm(w.c);speak(nm(w.c)+' wins!');$('win').style.display='flex';run=false},1000);
-  }
-  requestAnimationFrame(loop);
+  if(left.length<=1&&!ending){ending=true;const t=tok,w=left[0]||F[F.length-1];setTimeout(()=>done(w,t),1000)}
+  raf=requestAnimationFrame(loop);
 }
 function draw(){
   ctx.clearRect(0,0,W,H);
