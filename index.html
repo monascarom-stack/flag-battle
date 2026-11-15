@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>World Cup of Flags</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#05061a">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#05061a;--card:#0b0e2a;--tx:#eaf6ff;--mu:#8ea3c4;--cy:#22e8ff;--pk:#ff2d8a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#05061a}}
@@ -147,6 +150,7 @@ $('f1').onchange=load;$('f2').onchange=load;
 $('go').onclick=start;$('again').onclick=start;
 window.addEventListener('resize',()=>{if(!run){size();if(F.length)draw()}});
 size();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 </script>
 </body>
 </html>
