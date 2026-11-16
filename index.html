@@ -41,7 +41,7 @@ button.p{background:var(--pk);border-color:var(--pk);color:#fff;box-shadow:0 0 1
 <div class="wrap"><canvas id="c"></canvas>
 <div id="win"><div style="font-size:15px;color:var(--mu)">🏆 WINNER</div><div class="f" id="wf"></div><div class="n" id="wn"></div><div id="rk" style="font-size:14px;margin-top:2px"></div><button class="p" id="again" style="margin-top:14px;flex:none">PLAY AGAIN</button></div><canvas id="cf"></canvas></div>
 <div id="log">Press START BATTLE</div>
-<div class="ctl"><button class="p" id="go">START BATTLE</button></div>
+<div class="ctl"><button class="p" id="go">START BATTLE</button><button id="auto" style="white-space:nowrap">&#8635; AUTO: OFF</button></div>
 <div class="ctl3"><select id="mode"><option value="c">Classic</option><option value="g">Groups &#8594; Final</option></select><select id="cnt"><option value="0">All</option><option value="64">64</option><option value="32">32</option><option value="16">16</option></select><select id="siz"><option value="1.2">Size S</option><option value="1.6" selected>Size M</option><option value="2.1">Size L</option></select><select id="spd"><option value="0.7">Slow</option><option value="1" selected>Normal</option><option value="1.6">Fast</option><option value="2.4">Turbo</option></select></div>
 <div class="ctl2"><button id="vo" class="on">🎙 VOICE ON</button><div class="fw"><button id="sg">♫ SONG</button><input type="file" id="f1" class="ov" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"></div><div class="fw"><button id="pk">📁 ADD SONG</button><input type="file" id="f2" class="ov" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"></div></div>
 <div class="box" id="qb" style="display:none;margin-bottom:10px"><h2>QUALIFIED FOR FINAL</h2><div id="q"></div></div>
@@ -64,7 +64,7 @@ let raf,tok=0,gi=0,groupsN=0,queue=[],qual=[],mode='c',isFin=false,results=[],cu
 function tone(f,t0,d,type,v){const o=ac.createOscillator(),g=ac.createGain();o.type=type||'triangle';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v||.25,t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(ac.destination);o.start(t0);o.stop(t0+d+.05)}
 function fanfare(){try{ac.resume();const t=ac.currentTime;[[523.25,0,.18],[659.25,.18,.18],[783.99,.36,.18],[1046.5,.54,.5],[783.99,1.1,.15],[1046.5,1.28,.9]].forEach(n=>tone(n[0],t+n[1],n[2]+.1));[523.25,659.25,783.99,1046.5].forEach(f=>tone(f,t+1.28,1.1,'sine',.12));[2093,2637,3136].forEach((f,i)=>tone(f,t+1.5+i*.12,.4,'sine',.06))}catch(e){}}
 function ding(){try{ac.resume();const t=ac.currentTime;tone(880,t,.25,'sine',.2);tone(1318.5,t+.12,.4,'sine',.2)}catch(e){}}
-function start(){
+function start(keep){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
   tok++;cancelAnimationFrame(raf);
   $('win').style.display='none';$('el').innerHTML='';$('q').innerHTML='';qual=[];results=[];ordn=0;$('rb').style.display='none';$('rs').innerHTML='';cfOn=false;
@@ -73,7 +73,7 @@ function start(){
   mode=$('mode').value;const k=Math.ceil(list.length/20);
   if(mode==='g'&&k>1){queue=Array.from({length:k},(x,i)=>list.filter((y,j)=>j%k===i));groupsN=k;$('qb').style.display='block'}
   else{queue=[list];groupsN=0;mode='c';$('qb').style.display='none'}
-  gi=0;stage();playSong();
+  gi=0;stage();if(!keep)playSong();
   run=true;last=performance.now();raf=requestAnimationFrame(loop);
 }
 function stage(){
@@ -128,7 +128,7 @@ function done(ws,t){
   results[results.length-1].rank=true;renderResults();
   run=false;$('wf').textContent=w.e;$('wn').textContent=nm(w.c);
   $('rk').textContent=rev[0]?('\u{1F948} '+nm(rev[0].c)+(rev[1]?'  \u00b7  \u{1F949} '+nm(rev[1].c):'')):'';
-  $('win').style.display='flex';fanfare();confetti();speak(nm(w.c)+' wins!');
+  $('win').style.display='flex';fanfare();confetti();speak(nm(w.c)+' wins!');if(autoOn)autoNext(t);
 }
 function badge(e){const S=Math.ceil(2*FS*dpr*2),c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.beginPath();g.arc(S/2,S/2,S/2,0,6.283);g.clip();g.font=(S*1.05)+'px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,S/2,S/2+S*.04);return c}
 function out(f){
@@ -203,7 +203,13 @@ const load=async e=>{const f=e.target.files[0];if(!f)return;$('log').textContent
   catch(err){try{el=new Audio(URL.createObjectURL(f));el.loop=true;buf='el'}catch(e2){$('log').textContent='Could not play this file';return}}
   songOn=true;$('f1').style.display='none';lbl();playSong();$('log').textContent='\u266b '+f.name;e.target.value=''};
 $('f1').onchange=load;$('f2').onchange=load;
-$('go').onclick=start;$('again').onclick=start;
+let autoOn=false,wl=null;
+async function wake(){try{if(autoOn&&navigator.wakeLock&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wake()});
+function autoNext(t){let n=9;const iv=setInterval(()=>{if(t!==tok||!autoOn){clearInterval(iv);return}n--;$('log').innerHTML='Next battle in '+n+'s';if(n<=0){clearInterval(iv);start(true)}},1000)}
+$('auto').onclick=()=>{autoOn=!autoOn;$('auto').innerHTML=autoOn?'&#8635; AUTO: ON':'&#8635; AUTO: OFF';$('auto').className=autoOn?'on':'';
+  if(autoOn){wake();if(!run)start(!!(src||(el&&!el.paused)))}else{try{wl&&wl.release()}catch(e){}wl=null}};
+$('go').onclick=()=>start();$('again').onclick=()=>start();
 window.addEventListener('resize',()=>{if(!run){size();if(F.length)draw()}});
 size();
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
